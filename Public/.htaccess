@@ -1,0 +1,13 @@
+#   RapidFrames .htaccess
+#   To make files public, ignore them here:
+#   ((?!(directory1|directory2|etc)).)
+#   Do not change (([^/]+)?(/)?)+$ index.php?request_url=$0&%{QUERY_STRING} [NC]
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^((?!(assets|images|scripts|styles)).)(([^/]+)?(/)?)+$ index.php?request_url=$0&%{QUERY_STRING} [NC]
+ErrorDocument 404 /index.php?request_url=404
+ErrorDocument 403 /index.php?request_url=403
+ErrorDocument 500 /index.php?request_url=500
+</IfModule>
