@@ -5,6 +5,7 @@ A lightweight prototype production framework for modelling the structure, design
 
 
 ##Features
+
 - Pretty URL's
 - Custom routing
 - Autoloading of headers and footers 
@@ -21,4 +22,4 @@ A lightweight prototype production framework for modelling the structure, design
 PHP5.3+
 
 ##Installation
-Make sure you have to point your vhosts to RapidFrames/Public
+Vhosts should point to RapidFrames/Public
