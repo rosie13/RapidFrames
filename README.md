@@ -1,7 +1,7 @@
 #RapidFrames
 
 ##What is it?
-A lightweight prototype production framework for modelling the structure, design & UX of web and mobile.
+A lightweight prototype production framework for modelling the structure, design & UX of web and mobile sites.
 
 
 ##Features
