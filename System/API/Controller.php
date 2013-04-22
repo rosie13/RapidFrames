@@ -1,7 +1,7 @@
 <?php
-if(!isset($_GET['get']))
-    die;
-
+/**
+ * @todo this is too tightly coupled with querying the $pagesGrid
+ */
 class API_Controller
 {
     /**
@@ -52,16 +52,21 @@ class API_Controller
      */
     static $dataColumns = array();
     
-    public function __construct()
+    public function __construct(array $params, $http = true)
     {
         global $pagesGrid;
-        $this->params = $_GET;
-        $this->get = strtolower($_GET['get']);
-        $this->format = isset($_GET['format']) && in_array(strtolower($_GET['format']),$this->allowedFormats)?strtolower($_GET['format']):'json';
+        $this->params = $params;
+        $this->http = $http;
+        if(!isset($params['get'])){
+            header("Status: 404 Not Found");
+            die;
+        }
+        $this->get = strtolower($params['get']);
+        $this->format = isset($params['format']) && in_array(strtolower($params['format']),$this->allowedFormats)?strtolower($params['format']):'json';
         $this->configureCount();
         $this->method = $this->formatMethod($this->get);
         $this->grid = $pagesGrid; 
-        if(count($_GET)===0){
+        if(count($params)===0){
             header("Status: 404 Not Found");
             die;
         }
@@ -162,10 +167,10 @@ class API_Controller
     }
     
     /**
-     * Dispatch the results
-     * Prints out the results with the correct headers
+     * Prepare content to dispatch
+     * @return mixed string|array|object
      */
-    public function distpatch()
+    public function prepareDispatch()
     {
         $content = false;
         try{ $content = $this->{$this->method}($this); } 
@@ -173,34 +178,65 @@ class API_Controller
         // Its a count request
         if($this->count)
             $content = $this->resolveCount($content);
-        $data = \RapidFrames\System\DataCSV::getMimeTypes();
-        $mime = isset($data['.'.$this->format])?$data['.'.$this->format]:'';
-        if(!$content){
-            header("Status: 404 Not Found");
-            die;
-        }
-        if($this->format==='array')
-            print_r($content);
-        elseif($mime)
+        if(!isset($content) && !$content)
+            return false;
+        
+        switch($this->format)
         {
-            header("Accept-Ranges: bytes");
-            header(sprintf("Content-type: %s",$mime));
+            case 'array':
+                return (array)$content;
+                break;
+            case 'json':
+                return json_encode($content);
+                break;
+            case 'xml':
+                return $this->object2XML($content, new SimpleXMLElement('<tree/>'))->asXML();
+                break;
+            case 'csv':
+                ob_start();
+                $this->object2CSV($content);
+                return ob_get_clean();
+                break;
+        }
+    }
+    
+    /**
+     * Dispatch the results
+     * Prints out the results with the correct headers
+     */
+    public function dispatch()
+    {
+        if(!$content=$this->prepareDispatch())
+            return false;
+        
+        if(!$this->http)
+            return $content;
+        else{
             switch($this->format){
+                case 'array':
+                    echo $content;
+                    break;
                 case 'json':
-                    echo json_encode($content);
+                    header("Accept-Ranges: bytes");
+                    header("Content-type: application/json");
+                    echo $content;
                     break;
                 case 'xml':
-                    echo $this->object2XML($content, new SimpleXMLElement('<tree/>'))->asXML();
+                    header("Accept-Ranges: bytes");
+                    header("Content-type: application/xml");
+                    echo $content;
                     break;
                 case 'csv':
+                    header("Accept-Ranges: bytes");
+                    header("Content-type: text/csv");
                     header("Content-Disposition: attachment; filename=get-$this->get.csv");
                     header("Pragma: no-cache");
                     header("Expires: 0");
-                    $this->object2CSV($content);
+                    echo $content;
                     break;
             }
+            die;
         }
-        die;
     }
 
     /**
@@ -243,9 +279,12 @@ class API_Controller
             $k = str_replace('/','--',$k);
             if(is_numeric($k) || is_numeric(substr($k,0,1)))
                 $k = 'int'.$k;
-            is_array($v)
-                ? $this->object2XML($v, $xml->addChild($k))
-                : $xml->addChild($k, $v);
+            if(is_array($v))
+            $this->object2XML($v, $xml->addChild($k));
+            else{
+                $v = preg_replace('([\&])','&amp;',$v);
+                $xml->addChild($k,$v);
+            }
         }
         return $xml;
     }
@@ -362,14 +401,13 @@ class API_Controller
      * Add Methods on the fly
      * @param string $method
      * @param array $args
+     * @return closure
+     * @throws 
      */
     public function __call($method, $args)
     {
         if(isset($this->$method))
             return call_user_func_array($this->$method, $args);
+        else throw new \Exception("$method does not exist");
     }
 }
-$api = new API_Controller;
-if(file_exists(RF_INC.DS.'api.php'))
-    include RF_INC.DS.'api.php';
-$api->distpatch();

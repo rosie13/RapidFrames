@@ -372,7 +372,7 @@ class Router
      */
     private function resolveApiRequest()
     {
-        $path = RF_SYSTEM.DS.'API'.DS.'Controller.php';
+        $path = RF_SYSTEM.DS.'API'.DS.'Serve.php';
         if(!is_dir($path) && file_exists($path)){
             $this->includePath = $path;
             require_once($this->includePath);
@@ -649,18 +649,11 @@ class Router
      * @param string $name
      * @return mixed 
      */
-    public function getBlock($name, $echo = true)
+    public function getBlock($name, $echo = true, $vars = array())
     {
         $path = RF_BLOCKS.DS.$name.'.php';
-        $root = explode('/',$name);
-        $root = $root[0];
         // What blocks have been called?
-        if(isset($this->blocksCalled[$root]))
-            $this->blocksCalled[$root]++;
-        else $this->blocksCalled[$root] = 1;
-        if(isset($this->blocksCalled[$name]))
-            $this->blocksCalled[$name]++;
-        else $this->blocksCalled[$name] = 1;
+        $this->trackBlockUsage($name);
         // load the block
         if(file_exists($path)){
             ob_start();
@@ -674,16 +667,86 @@ class Router
     }
 
     /**
+     * Track Block usage for this page
+     * @param string $name
+     * @return object $this
+     */
+    private function trackBlockUsage($name)
+    {
+        $root = explode('/',$name);
+        $root = array_shift($root);
+        if(isset($this->blocksCalled[$root]))
+            $this->blocksCalled[$root]++;
+        else $this->blocksCalled[$root] = 1;
+        if(isset($this->blocksCalled[$name]))
+            $this->blocksCalled[$name]++;
+        else $this->blocksCalled[$name] = 1;
+        return $this;
+    }
+    /**
+     * Get a block of code and repeat it
+     * @param string $name
+     * @param string $handlers callbacks to handle epressions uniquely
+     * @param mixed $collection array|object
+     * @param string $echo 
+     * @return mixed string|bool
+     */
+    public function getRepeaterBlock($name, $collection, $handlers = array(), $echo = true)
+    {
+        $path = RF_BLOCKS.DS.$name.'.php';
+        $this->trackBlockUsage($name);
+        // load the block
+        if(file_exists($path)){
+            ob_start();
+            include($path);
+            $contents = ob_get_clean();
+            $contents = trim(preg_replace('/\s+/', ' ', $contents));
+            // Match these tags
+            $repeatOpeningTag = '<\!\-\-start\:rf\-repeat\-\-\>';
+            $repeatClosingTag = '<\!\-\-end\:rf\-repeat\-\-\>';
+            // Give them a unique ID
+            $mktime = mktime();
+            $repeatOpeningTagIDRegex = "(\<\!\-\-start\:rf\-repeatID$name-$mktime\-\-\>)";
+            $repeatOpeningTagIDReplace = "<!--start:rf-repeatID$name-$mktime-->";
+            $repeatClosingTagIDRegex = "(\<\!\-\-end\:rf\-repeatID$name-$mktime\-\-\>)";
+            $repeatClosingTagIDReplace = "<!--end:rf-repeatID$name-$mktime-->";
+            // Replace into unique ID's
+            $contentsReTagged = preg_replace(
+                    "/$repeatOpeningTag/", 
+                    $repeatOpeningTagIDReplace, 
+                    $contents); 
+            $contentsReTagged = preg_replace(
+                    "/$repeatClosingTag/", 
+                    $repeatClosingTagIDReplace, 
+                    $contentsReTagged); 
+            $regex = "#$repeatOpeningTagIDRegex(.*\n?)$repeatClosingTagIDRegex#";
+            if(!preg_match($regex,$contentsReTagged,$matches))
+                    return false;
+            // We have matched and retrieved string to replace
+            $repeaterString = array_shift($matches);
+            $repeaterInstance = new \RapidFrames\System\Repeater($collection, $repeaterString, $handlers);
+            $rendered = $repeaterInstance->render();
+            // Only match the first instance
+            $contents = preg_replace($regex, $rendered, $contentsReTagged, 1);
+            if($echo)
+                echo $contents;
+            else return $contents;
+        }else Alert::fatal("$name.php does not exist");
+        return false;
+    }
+    
+    /**
      * Add Methods on the fly
      * @param string $method
      * @param array $args
-     * @return false
+     * @return closure 
+     * @throws Exception if method is not set
      */
     public function __call($method, $args)
     {
         if(isset($this->$method))
             return call_user_func_array($this->$method, $args);
-        else return false;
+        else throw new \Exception("$method does not exist");
     }
     
     /**

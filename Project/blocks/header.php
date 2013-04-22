@@ -6,20 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
     <link href="/assets/css/bootstrap.min.css" media="screen" rel="stylesheet" type="text/css">
     <link href="/assets/css/bootstrap-responsive.min.css" media="screen" rel="stylesheet" type="text/css">
-    <link href="/assets/css/rapidframes.css" media="screen" rel="stylesheet" type="text/css">
 </head> 
 
-<body id="layout-main" class="smrtr <?=isset($this->class)?$this->class:''?>"><a id="top"></a>
-    <?php $this->getBlock('toolbar'); ?>
+<body>
     <div class="container">
-            
             <div class="row">
-                <div class="span4">
-                    <div class="hero-unit side-nav">
-                        <h3>Smrtr Rapidframes</h3>
-                        <?php new \RapidFrames\System\Menu('main');?>
-                    </div> 
-                </div>
-                <div class="span8" id="content">
+                <div class="span12">
                     <br/>
+                    <?php if(!isset($this->headerTitle) || isset($this->headerTitle) && $this->headerTitle===true){?>
                     <h1><?=isset($this->title)?$this->title:'Rapidframes';?></h1>
+                    <?php }?>

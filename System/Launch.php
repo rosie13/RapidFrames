@@ -16,9 +16,10 @@ foreach(parse_ini_file("Global.ini", true) as $key => $val)
     define($key,$val);
 // Load core files
 require_once('API'.DS.'Interface.php');
-require_once('Vendors'.DS.'DataGrid'.DS.'DataGrid.php');
+require_once('Vendors'.DS.'Smrtr_DataGrid'.DS.'DataGrid.php');
 require_once('Vendors'.DS.'Zend'.DS.'Config.php');
 require_once('Utilities.php');
+require_once('Repeater.php');
 require_once('Router.php');
 require_once('Tree.php');
 require_once('Data.php');
@@ -32,5 +33,5 @@ if(!file_exists(RF_BLOCKS))
     RapidFrames\System\Alert::fail('No blocks directory');
 // Load up pagedata and then begin to route
 $pagesGrid = \RapidFrames\System\DataCSV::getTreeGrid(RF_PAGES,true);
-$pagesData = RapidFrames\System\DataCSV::getTreeData($pagesGrid);
+$pagesData = \RapidFrames\System\DataCSV::getTreeData($pagesGrid);
 new RapidFrames\System\Router;

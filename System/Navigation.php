@@ -58,14 +58,20 @@ class Page_Nav extends Tree
     {
         $subdepth = $depth + 1;
         if(count($slugs)>0){
-            printf ('<ul%s>',$current);
+            printf ('<ul class="%s">',$current);
             foreach ($slugs as $slug){
                 $page = $this->pages->{$slug};
                 $page->ancestors = (array)$page->ancestors;
-                if(count($page->ancestors)==$subdepth){
-                    $current = $this->current->slug===$page->slug||
-                            in_array($this->current->slug, $page->descendents)?' class="selected" ':' ';
-                    printf('<li%s><a href="%s" %s>%s</a>',$current,$page->permalink,$current,$page->title);
+                if(count($page->ancestors)===$subdepth){
+                    $classes = array();
+                    if($this->current->slug===$page->slug)
+                    $classes[] = $current = 'active';
+                    if($this->current->slug===$page->slug||
+                            in_array($this->current->slug, (array)$page->descendents))
+                    $classes[] = $current = 'selected';
+                    $classes[] = 'level'.$page->level;
+                    $classes[] = $page->symSlug;
+                    printf('<li class="%s"><a href="%s">%s</a>',implode(' ',$classes),$page->permalink,$page->title);
                     if($page->children>0) 
                         $this->printNav((array)$page->children, $subdepth,$current);
                     echo '</li>';
